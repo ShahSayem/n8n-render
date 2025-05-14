@@ -43,6 +43,7 @@ import type {
 	IPersonalizationSurveyAnswersV4,
 	AnnotationVote,
 	ITaskData,
+	ISourceData,
 } from 'n8n-workflow';
 
 import type {
@@ -157,7 +158,7 @@ export interface INodeUpdatePropertiesInformation {
 
 export type XYPosition = [number, number];
 
-export type DraggableMode = 'mapping' | 'panel-resize';
+export type DraggableMode = 'mapping' | 'panel-resize' | 'move';
 
 export interface INodeUi extends INode {
 	position: XYPosition;
@@ -189,6 +190,7 @@ export interface IAiDataContent {
 	data: INodeExecutionData[] | null;
 	inOut: 'input' | 'output';
 	type: NodeConnectionType;
+	source?: Array<ISourceData | null>;
 	metadata: {
 		executionTime: number;
 		startTime: number;
@@ -214,6 +216,12 @@ export interface IStartRunData {
 	triggerToStartFrom?: {
 		name: string;
 		data?: ITaskData;
+	};
+	agentRequest?: {
+		query: NodeParameterValueType;
+		tool: {
+			name: NodeParameterValueType;
+		};
 	};
 }
 
@@ -315,6 +323,7 @@ export interface IWorkflowDb {
 	id: string;
 	name: string;
 	active: boolean;
+	isArchived: boolean;
 	createdAt: number | string;
 	updatedAt: number | string;
 	nodes: INodeUi[];
@@ -328,7 +337,13 @@ export interface IWorkflowDb {
 	versionId: string;
 	usedCredentials?: IUsedCredential[];
 	meta?: WorkflowMetadata;
-	parentFolder?: { id: string; name: string };
+	parentFolder?: {
+		id: string;
+		name: string;
+		parentFolderId: string | null;
+		createdAt?: string;
+		updatedAt?: string;
+	};
 }
 
 // For workflow list we don't need the full workflow data
@@ -348,7 +363,6 @@ export type FolderShortInfo = {
 	id: string;
 	name: string;
 	parentFolder?: string;
-	parentFolderId?: string | null;
 };
 
 export type BaseFolderItem = BaseResource & {
@@ -356,10 +370,16 @@ export type BaseFolderItem = BaseResource & {
 	updatedAt: string;
 	workflowCount: number;
 	subFolderCount: number;
-	parentFolder?: FolderShortInfo;
+	parentFolder?: ResourceParentFolder;
 	homeProject?: ProjectSharingData;
 	sharedWithProjects?: ProjectSharingData[];
 	tags?: ITag[];
+};
+
+export type ResourceParentFolder = {
+	id: string;
+	name: string;
+	parentFolderId: string | null;
 };
 
 export interface FolderListItem extends BaseFolderItem {
@@ -1234,6 +1254,7 @@ export interface ITabBarItem {
 
 export interface IResourceLocatorResultExpanded extends INodeListSearchItems {
 	linkAlt?: string;
+	isArchived?: boolean;
 }
 
 export interface CurlToJSONResponse {
@@ -1471,7 +1492,8 @@ export type CloudUpdateLinkSourceType =
 	| 'worker-view'
 	| 'external-secrets'
 	| 'rbac'
-	| 'debug';
+	| 'debug'
+	| 'insights';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -1494,7 +1516,8 @@ export type UTMCampaign =
 	| 'upgrade-worker-view'
 	| 'upgrade-external-secrets'
 	| 'upgrade-rbac'
-	| 'upgrade-debug';
+	| 'upgrade-debug'
+	| 'upgrade-insights';
 
 export type N8nBanners = {
 	[key in BannerName]: {
@@ -1524,6 +1547,7 @@ export type ToggleNodeCreatorOptions = {
 	source?: NodeCreatorOpenSource;
 	nodeCreatorView?: NodeFilterType;
 	hasAddedNodes?: boolean;
+	connectionType?: NodeConnectionType;
 };
 
 export type AppliedThemeOption = 'light' | 'dark';
@@ -1542,7 +1566,8 @@ export type EnterpriseEditionFeatureKey =
 	| 'DebugInEditor'
 	| 'WorkflowHistory'
 	| 'WorkerView'
-	| 'AdvancedPermissions';
+	| 'AdvancedPermissions'
+	| 'ApiKeyScopes';
 
 export type EnterpriseEditionFeatureValue = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
 
@@ -1560,6 +1585,7 @@ export type InputPanel = {
 };
 
 export type OutputPanel = {
+	run?: number;
 	branch?: number;
 	data: {
 		isEmpty: boolean;
